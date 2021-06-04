@@ -1,0 +1,99 @@
+#---------------------------------#
+#      general configuration      #
+#---------------------------------#
+
+# version format
+version: 1.0.{build}
+
+# you can use {branch} name in version format too
+# version: 1.0.{build}-{branch}
+
+# branches to build
+branches:
+  only:
+    - master
+
+# Maximum number of concurrent jobs for the project
+max_jobs: 1
+
+#---------------------------------#
+#    environment configuration    #
+#---------------------------------#
+
+# Build worker image (VM template)
+image: Visual Studio 2019
+
+# clone directory
+clone_folder: c:\audiorouter
+
+# set clone depth
+clone_depth: 1                      # clone entire repository history if not defined
+clone_script:
+- cmd: git clone -q --recursive --branch=%APPVEYOR_REPO_BRANCH% https://github.com/%APPVEYOR_REPO_NAME%.git %APPVEYOR_BUILD_FOLDER%
+- cmd: git checkout -qf %APPVEYOR_REPO_COMMIT%
+
+# environment variables
+environment:
+  INSTALL_DIR: c:\projects\kod\kod
+#  matrix:
+
+#    - GENERATOR: "Visual Studio 12 2013 Win64"
+#      BUILD_PLATFORM: windows64_vs12
+#      OPENCV_VERSION: 2.4.13
+
+#    - GENERATOR: "Visual Studio 14 2015 Win64"
+#      BUILD_PLATFORM: windows64_vs14
+#      OPENCV_VERSION: 3.1.0.20160701
+
+# Automatically register private account and/or project AppVeyor NuGet feeds.
+nuget:
+  account_feed: true
+  project_feed: true
+  disable_publish_on_pr: true     # disable publishing of .nupkg artifacts to
+                                  # account/project feeds for pull request builds
+
+#---------------------------------#
+#       build configuration       #
+#---------------------------------#
+
+# build platform, i.e. x86, x64, Any CPU. This setting is optional.
+platform:
+ - x64
+
+# build Configuration, i.e. Debug, Release, etc.
+configuration:
+ - Release
+
+# scripts that run after cloning repository
+install:
+#  - cmd: choco install OpenCV -y -version %OPENCV_VERSION%
+build:
+#  project: audio-router.sln
+#  verbosity: minimal
+  
+build_script:
+#  - IF EXIST c:\tools\opencv* CD c:\tools\opencv*
+#  - SET OPENCV_DIR=%CD%\build
+  - echo Running cmake...
+  - cd c:\audiorouter
+  - set /p BUILD_VERSION=< VERSION
+  - echo %BUILD_VERSION%
+  - appveyor UpdateBuild -Version "%BUILD_VERSION%-%APPVEYOR_BUILD_NUMBER%"
+#  - cmake -G "%GENERATOR%" -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR% -DBUILD_CLIENT=ON -DBUILD_OPENCV=ON -DOpenCV_DIR=%OPENCV_DIR% -DBUILD_PLATFORM=%BUILD_PLATFORM% .
+  - msbuild audio-router.sln /p:Configuration=Debug /fileloggerparameters:Verbosity=minimal"
+  - msbuild audio-router.sln /p:Configuration=Release /fileloggerparameters:Verbosity=minimal"
+
+after_build:
+- 7z a Audio-Router-v%APPVEYOR_BUILD_VERSION%.zip %APPVEYOR_BUILD_FOLDER%\bin\Release\*.exe  %APPVEYOR_BUILD_FOLDER%\bin\Release\*.dll
+
+test: off
+
+#---------------------------------#
+#      artifacts configuration    #
+#---------------------------------#
+
+artifacts:
+
+  # pushing a single file
+  - path: Audio-Router-*.zip
+    name: Audio Router
